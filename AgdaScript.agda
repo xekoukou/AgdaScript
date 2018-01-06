@@ -348,31 +348,26 @@ mutual
            → {fnno : FNNO lvci} → {fvwo : FVWO lvci lvco fnno} 
            → {lvwi : VNO lli {se}}
            → {{seq : vwi ⊃ₑᵢ lvwi wt lvci}}
-           → (fn : ℕ × ℕ) → {{feq : _∈f_ {vci = lvci} {vco = lvco} {fnno = fnno} {fvwo = fvwo} ((proj₁ fn) + (nf ∸ (proj₂ fn))) tf}} → ASFun (fvwo (supToView seq)) vwo tf → ASFun vwi vwo tf
+           → (fn : ℕ × ℕ) → {{feq : _∈f_ {vci = lvci} {vco = lvco} {fnno = fnno} {fvwo = fvwo} ((proj₁ fn) + (nf ∸ (proj₂ fn))) tf}} → ASFun ((proj₂ (proj₂ (restV-morph vwi))) ∪ᵢ fvwo (supToView seq)) vwo tf → ASFun vwi vwo tf
     primF : PrimASFun vwi vwo → ASFun vwi vwo tf
     endF  : ASFun vwi vwo tf
-  
 
 
-  foo : ∀{li nni} → {vci : Vec ASType li} → {vw : View nni vci}
-         → ∀{lli se llo} → {lvci : Vec ASType lli} → (lvco : Vec ASType llo) → (fnno : View nni lvci → TNames)
-         → {lvwi : VNO lli {se}} → vw ⊃ₑᵢ lvwi wt lvci → Vec ASType (neg lli llo li)
-  foo {vci = vci} lvco fnno llvbb = {!!} -- vci ++ lvco
-  foo {vci = []} {lvci = ast ∷ lvci} _ fnno (icvvbb {n = n} ⦃ beq = () ⦄)
-  foo {vci = vci@(_ ∷ _)} {vw = vw} {lvci = ast ∷ lvci} lvco fnno (icvvbb {n = n} {{beq = beq}} {{ieq = ieq}}) = {!!} where
-    r = remfVT vw beq
-    g = foo {vw = remfV vw beq} {lvci = lvci} lvco {!!} {!ieq!} 
+  restV-morph-abs : ∀ {l} {vc : Vec ASType l} {nni nno} n →
+                  Dec (n ∈ₙ nno) →
+                  View nni vc → Σ ℕ (λ l₁ → Σ (Vec ASType l₁) (View nno))
+  restV-morph-abs n (yes p) vw = suc rl , proj₂ n ∷ rvc , icv n {{beq = p}} rvw where
+    r = restV-morph vw
+    rl = proj₁ r
+    rvc = proj₁ (proj₂ r)
+    rvw = proj₂ (proj₂ r)
+  restV-morph-abs n (no ¬p) vw = restV-morph vw
+
+  restV-morph : ∀{li nni nno} {vci : Vec ASType li} (vwi : View nni vci) → Σ _ (λ l → Σ (Vec ASType l) (λ vc → View nno vc))
+  restV-morph {nno = nno} (icv n vwi) = restV-morph-abs n (n ∈ₙ? nno) vwi
+  restV-morph lv = zero , [] , lv
 
 
-  BLOB : ∀{li nni} → {vci : Vec ASType li} → {vw : View nni vci}
-         → ∀{lli se llo} → {lvci : Vec ASType lli} → (lvco : Vec ASType llo) → (fnno : FNNO lvci)
-         → {lvwi : VNO lli {se}} → vw ⊃ₑᵢ lvwi wt lvci → Set
-  BLOB lvco fnno seq = View (fnno (supToView seq)) ((foo lvco fnno seq) ++ lvco)
-
-  blol : ∀{n li nni} → {vci : Vec ASType li} → (vw : View nni vci) → {tf : TFun n}
-         → ∀{lli se llo} → {lvci : Vec ASType lli} → {lvco : Vec ASType llo} → {fnno : FNNO lvci} → {fvwo : FVWO lvci lvco fnno}
-         → (lvwi : VNO lli {se}) → {{seq : vw ⊃ₑᵢ lvwi wt lvci}} → ASFunFT lvci lvco fvwo tf → BLOB lvco fnno seq
-  blol = {!!}
 
 
 addF : ∀{li lo nf} {vci : Vec ASType li} {vco : Vec ASType lo} {fnno : FNNO vci} {fvwo : FVWO vci vco fnno} (tf : TFun nf) (asf : ASFunFT vci vco fvwo tf) → TFun (suc nf)
