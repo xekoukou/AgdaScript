@@ -24,6 +24,11 @@ it : ∀ {a} {A : Set a} {{_ : A}} → A
 it {{x}} = x
 
 
++rsuc≡ : ∀ a b → a + suc b ≡ suc a + b
++rsuc≡ zero b = refl
++rsuc≡ (suc a) b = cong suc (+rsuc≡ a b)
+
+
 
 data _≤_ : Rel ℕ Level.zero where
   instance
@@ -318,37 +323,35 @@ mutual
 
 
   data TFun : ℕ → Set where
-      icasf : ∀{n li lo} → {vci : Vec ASType li} → {vco : Vec ASType lo} → {fnno : FNNO vci} → {fvwo : FVWO vci vco fnno} → (tf : TFun n) → ASFunFT vci vco fvwo tf → TFun (suc n)
+      icasf : ∀{n li lo} → {vci : Vec ASType li} → {vco : Vec ASType lo} → (tf : TFun n) → ASFunFT vci vco tf → TFun (suc n)
       lf : TFun zero
 
 
-  FNNO : ∀{li} → (vci : Vec ASType li) → Set
-  FNNO vci = ∀{nni} → View nni vci → TNames
-
-
-  FVWO : ∀{li lo} → (vci : Vec ASType li) → (vco : Vec ASType lo) → FNNO vci → Set
-  FVWO vci vco fnno = ∀{nni} → (vwi : View nni vci) → View (fnno vwi) vco
-
-
-  ASFunFT : ∀{n li lo} → (vci : Vec ASType li) → (vco : Vec ASType lo) → {fnno : FNNO vci} → (fvwo : FVWO vci vco fnno) → (tf : TFun n) → Set
-  ASFunFT {n} {li} {lo} vci vco fvwo tf = ∀{nni} → (vwi : View nni vci) → ASFun vwi (fvwo vwi) tf
+  ASFunFT : ∀{n li lo} → (vci : Vec ASType li) → (vco : Vec ASType lo) → (tf : TFun n) → Set
+  ASFunFT {n} {li} {lo} vci vco tf = ∀{nni} → (vwi : View nni vci) → Σ TNames (λ nno → Σ (View nno vco) (λ vwo → ASFun vwi vwo tf))
 
 
 
-  data _∈f_ {li lo} {vci : Vec ASType li} {vco : Vec ASType lo} {fnno : FNNO vci} {fvwo : FVWO vci vco fnno} : ∀{nf} → ℕ → TFun nf → Set where
+  data _∈f_ {li lo} {vci : Vec ASType li} {vco : Vec ASType lo} : ∀{nf} → ℕ → TFun nf → Set where
     instance
-      icb : ∀{n lli llo nf} → {lvci : Vec ASType lli} → {lvco : Vec ASType llo} → {lfnno : FNNO lvci} → {lfvwo : FVWO lvci lvco lfnno} → {tf : TFun nf} → {asf : ASFunFT lvci lvco lfvwo tf} → _∈f_ {vci = vci} {vco = vco} {fnno = fnno} {fvwo = fvwo} n tf → (suc n) ∈f icasf tf asf 
-      ln : ∀{nf} → {tf : TFun nf} → {asf : ASFunFT vci vco fvwo tf} → zero ∈f icasf tf asf
+      icb : ∀{n lli llo nf} → {lvci : Vec ASType lli} → {lvco : Vec ASType llo} → {tf : TFun nf} → {asf : ASFunFT lvci lvco tf} → _∈f_ {vci = vci} {vco = vco} n tf → (suc n) ∈f icasf tf asf 
+      ln : ∀{nf} → {tf : TFun nf} → {asf : ASFunFT vci vco tf} → zero ∈f icasf tf asf
 
 
-   
+
+  outF : ∀{nni lli llo} {lvci : Vec ASType lli} (lvwi : View nni lvci) {lvco : Vec ASType llo} → ∀{nf} → {fnM : ℕ} → {tf : TFun nf} → (feq : _∈f_ {vci = lvci} {vco = lvco} fnM tf) → Σ TNames (λ nno → View nno lvco)
+  outF lvwi {nf = .(suc _)} {.(suc _)} (icb inf) = outF lvwi inf
+  outF lvwi {nf = .(suc _)} {.0} (ln {asf = asf}) = proj₁ (asf lvwi) , proj₁ (proj₂ (asf lvwi)) 
+
+
+
   data ASFun {li lo nni nf} {vci : Vec ASType li} (vwi : View nni vci) {vco : Vec ASType lo} {nno} (vwo : View nno vco) (tf : TFun nf) : Set where
-    call : ∀{lli se llo}
-           → {lvci : Vec ASType lli} → {lvco : Vec ASType llo}
-           → {fnno : FNNO lvci} → {fvwo : FVWO lvci lvco fnno} 
-           → {lvwi : VNO lli {se}}
-           → {{seq : vwi ⊃ₑᵢ lvwi wt lvci}}
-           → (fn : ℕ × ℕ) → {{feq : _∈f_ {vci = lvci} {vco = lvco} {fnno = fnno} {fvwo = fvwo} ((proj₁ fn) + (nf ∸ (proj₂ fn))) tf}} → ASFun ((proj₂ (proj₂ (restV-morph vwi))) ∪ᵢ fvwo (supToView seq)) vwo tf → ASFun vwi vwo tf
+    call : ∀{lli llo}
+           → {lvci : Vec ASType (suc lli)} → {lvco : Vec ASType llo}
+           → (lvwi : Vec ℕ (suc lli))
+           → let vno = toVNO lvwi in
+             {{seq : vwi ⊃ₑᵢ (proj₂ (proj₂ vno)) wt {!!}}}
+           → (fn : ℕ) → {{feq : _∈f_ {vci = {!!}} {vco = lvco} (nf ∸ fn) tf}} → let outf = outF (supToView seq) feq in ASFun {nni = proj₁ outf} ((proj₂ (proj₂ (restV-morph vwi))) ∪ᵢ proj₂ outf) vwo tf → ASFun vwi vwo tf
     primF : PrimASFun vwi vwo → ASFun vwi vwo tf
     endF  : ASFun vwi vwo tf
 
@@ -369,9 +372,8 @@ mutual
 
 
 
-
-addF : ∀{li lo nf} {vci : Vec ASType li} {vco : Vec ASType lo} {fnno : FNNO vci} {fvwo : FVWO vci vco fnno} (tf : TFun nf) (asf : ASFunFT vci vco fvwo tf) → TFun (suc nf)
-addF tf as = icasf tf as
+addF : ∀{li lo nf} {vci : Vec ASType li} {vco : Vec ASType lo} (tf : TFun nf) (asf : ASFunFT vci vco tf) → ℕ × TFun (suc nf)
+addF {nf = nf} tf as = nf , icasf tf as
 
 
 
