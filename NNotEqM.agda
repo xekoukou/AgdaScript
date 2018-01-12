@@ -3,7 +3,7 @@ module NNotEqM where
 
 open import Data.Bool
 open import Data.Nat hiding (_≤_ ; _≤?_ ; ≤-pred)
-open import Data.Vec
+open import Data.Vec hiding (_∈_)
 open import Data.Product
 open import Relation.Nullary
 open import Data.Empty
@@ -25,6 +25,11 @@ data NNotEq : (a b : ℕ) → Set where
     lt : ∀{b} → NNotEq 0 (suc b)
     gt : ∀{a} → NNotEq (suc a) 0
 
+
+
+slt⇒NNotEq : ∀{a b} → suc a ≤ b → NNotEq a b
+slt⇒NNotEq {zero} s≤s = lt
+slt⇒NNotEq {suc a} s≤s = predNEq {{ieq = slt⇒NNotEq it}}
 
 
 nnotEq?-abs : ∀ {a b} →
@@ -51,34 +56,49 @@ data NNotEqVec (n : ℕ) : ∀{l} → Vec ℕ l → Set where
     nelvec : NNotEqVec n []
 
 
+elimNNotEqVec : ∀{n1 n2 l} → {vc : Vec ℕ l} → NNotEqVec n1 (n2 ∷ vc) → NNotEq n1 n2
+elimNNotEqVec neicvec = it
+
+
+
 data NNotEqVVec : ∀{l} → Vec ℕ l → Set where
   instance
     neicvvec : ∀{l nc} → {vw : Vec ℕ l} → {{neq : NNotEqVec nc vw}} → {{ieq : NNotEqVVec vw}} → NNotEqVVec (nc ∷ vw)
     nelvvec : NNotEqVVec []
 
 
--- Given that (a ∈ vl) is not an instance , instance will never succeed here.
+infix 4 _∈_
+
+
+data _∈_ {a} {A : Set a} : A → {n : ℕ} → Vec A n → Set a where
+  instance
+    here  : ∀ {n} {x}   {xs : Vec A n} → x ∈ x ∷ xs
+    there : ∀ {n} {x y} {xs : Vec A n} {{x∈xs : x ∈ xs}} → x ∈ y ∷ xs
+
+
+
 data _⊃_ {A k} (vl : Vec A k) : ∀{l} → Vec A l → Set where
   instance
-    ic⊃ : ∀{a l} → {vr : Vec A l} → {{ieq : vl ⊃ vr}} → (a ∈ vl) → vl ⊃ (a ∷ vr)
+    ic⊃ : ∀{a l} → {vr : Vec A l} → {{ieq : vl ⊃ vr}} → {{a∈vl : a ∈ vl}} → vl ⊃ (a ∷ vr)
     ec⊃ : vl ⊃ []
 
 
 
 ln∷⊃ : ∀{k l A} → ∀ n → {vl : Vec A k} → {vr : Vec A l} → vl ⊃ vr → (n ∷ vl) ⊃ vr
-ln∷⊃ n (ic⊃ x) = ic⊃ {{ln∷⊃ n it}} (there x) 
+ln∷⊃ n ic⊃ = ic⊃ {{ln∷⊃ n it}}
 ln∷⊃ n ec⊃ = ec⊃
 
 n∷⊃ : ∀{k l A} → ∀ n → {vl : Vec A k} → {vr : Vec A l} → vl ⊃ vr → (n ∷ vl) ⊃ (n ∷ vr)
-n∷⊃ n sup = ic⊃ {{ln∷⊃ n sup}} here
+n∷⊃ n sup = ic⊃ {{ln∷⊃ n sup}}
 
 
 nnotEq-∈ : ∀{k} → {vl : Vec ℕ k} → ∀ n a → a ∈ vl → NNotEqVec n vl → NNotEq n a
 nnotEq-∈ n a here neicvec = it
-nnotEq-∈ n a (there bel) neicvec = nnotEq-∈ n a bel it
+nnotEq-∈ n a (there {{x}}) neicvec = nnotEq-∈ n a x it
 
-nnotEqVec-⊃ : ∀{k l} → {vl : Vec ℕ k} → {vr : Vec ℕ l} → ∀ n → vl ⊃ vr → NNotEqVec n vl → NNotEqVec n vr
-nnotEqVec-⊃ n (ic⊃ {{ieq}} x) neq = nnotEq-∈ n _ x neq asInst nnotEqVec-⊃ n ieq neq asInst neicvec 
-nnotEqVec-⊃ n ec⊃ neq = nelvec
+
+nnotEqVec-⊃ : ∀{k l} → {vl : Vec ℕ k} → {vr : Vec ℕ l} → ∀ n → {{sup : vl ⊃ vr}} → {{neq : NNotEqVec n vl}} → NNotEqVec n vr
+nnotEqVec-⊃ n {{ic⊃ {{ieq}} {{x}}}} {{neq}} = neicvec {{nnotEq-∈ n _ x neq }} {{nnotEqVec-⊃ n {{ieq}} {{neq}}}} 
+nnotEqVec-⊃ n {{ec⊃}} = nelvec
 
 

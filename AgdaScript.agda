@@ -45,6 +45,10 @@ data TNames : Set where
   ln : TNames
 
 
+nn-len : TNames → ℕ
+nn-len (icn tns x x₁) = suc (nn-len tns)
+nn-len ln = zero
+
 Tℕ : Set
 Tℕ = ℕ × ASType
 
@@ -66,7 +70,12 @@ data _∈ₙ_ : Tℕ → TNames → Set where
     licb  : ∀{ast nn} → (zero , ast) ∈ₙ (icn nn ast true)
 
 
--- This required ASType Equality.
+∈ₙ-len : ∀{n nn} → n ∈ₙ nn → suc (proj₁ n) ≤ nn-len nn
+∈ₙ-len (icb {{beq}}) = s≤s {{∈ₙ-len beq}}
+∈ₙ-len licb = s≤s
+
+
+-- This required ASType Equality. This is ok because the types here are very basic.
 ∈ₙ?-abs : ∀ {n ast nn} →
           Dec ((n , ast) ∈ₙ nn) → ∀ x y → Dec ((suc n , ast) ∈ₙ icn nn x y)
 ∈ₙ?-abs (yes p) x y = p asInst yes icb
@@ -102,10 +111,10 @@ remN {(zero , _)} (icn nn x₁ x₂) licb = icn nn x₁ false
 remN {(suc n , ast)} (icn nn x₁ x₂) icb = icn (remN {(n , ast)} nn it) x₁ x₂
 
 -- We add a new name at the end so as to preserve the name conversions.
-addN : TNames → (ast : ASType) → Σ TNames (λ x → Σ _ (λ n → Name (n , ast) {x}))
-addN (icn nn x x₁) ast = icn (proj₁ r) x x₁ , suc (proj₁ (proj₂ r)) , icb {{proj₂ (proj₂ r)}} where 
+addN : (pnn : TNames) → (ast : ASType) → Σ TNames (λ x → Σ _ (λ n → (Name (n , ast) {x} × (nn-len pnn ≤ n))))
+addN (icn nn x x₁) ast = icn (proj₁ r) x x₁ , suc (proj₁ (proj₂ r)) , (icb {{proj₁ (proj₂ (proj₂ r))}}) , (s≤s {{proj₂ (proj₂ (proj₂ r))}}) where 
   r = addN nn ast
-addN ln ast = icn ln ast true , zero , it
+addN ln ast = icn ln ast true , zero , (it , z≤n)
 
 
 
@@ -236,8 +245,8 @@ supToView' : ∀{nn ll} {vcl : Vec ASType ll} {vl : View nn vcl} → ∀{lr} →
 supToView' {vcr = x ∷ vcr} {vw = nc ∷ vw} ⦃ neicvvec {{neq}}⦄ (icvvbb {n = n} {ast} ⦃ beq = beq ⦄ ⦃ ieq ⦄) = q , n∷⊃ nc (proj₂ is) where
   r = belToName beq
   is = supToView' ieq
-  q = icv (n , ast) {{beq = r}} (proj₁ is) {{neqv = nnotEqVec-⊃ n (proj₂ is) neq}}
-supToView' (llvbb {n} {ast} {{beq}}) = icv (n , ast) {{belToName beq}}  lv , ic⊃ here
+  q = icv (n , ast) {{beq = r}} (proj₁ is) {{neqv = nnotEqVec-⊃ n {{proj₂ is}} {{neq}}}}
+supToView' (llvbb {n} {ast} {{beq}}) = icv (n , ast) {{belToName beq}}  lv , ic⊃
 
 supToView : ∀{nn ll} {vcl : Vec ASType ll} {vl : View nn vcl} → ∀{lr} → {vcr : Vec ASType lr} → {vw : Vec ℕ lr} → {{ieq : NNotEqVVec vw}}
             → (sup : vl ⊃ₑᵢ vw wt vcr) → (View nn vcr)
@@ -247,74 +256,97 @@ supToView sup = proj₁ (supToView' sup)
 
 
 
-
-data PrimASFun : ∀{li lo nni} → {vci : Vec ASType li} → View nni vci → {vco : Vec ASType lo} → ∀{nno} → View nno vco → Set where
-  _←+ₚ_ : ∀{nni} →  ∀ n1 n2 → {{eq1 : (n1 , int32) ∈ₙ nni}} → {{eq2 : (n2 , int32) ∈ₙ nni}} → {{neq : NNotEq (pos eq1) (pos eq2)}}
+data PrimASFun {nni} : ∀{li lo} → {vci : Vec ASType li} → View nni vci → {vco : Vec ASType lo} → ∀{nno} → View nno vco → Set where
+  ←+ₚ : ∀ {n1 n2} → {{eq1 : (n1 , int32) ∈ₙ nni}} → {{eq2 : (n2 , int32) ∈ₙ nni}} → {{neqv : NNotEqVec n2 []}} → {{neq : NNotEqVec n1 (n2 ∷ [])}}
           → let k = remN nni eq1
                 r = addN k int32
-                g = nmorph-a {int32} (nmorph-r {nn = nni} eq1 eq2) in 
-              PrimASFun {li = 2} {lo = 2} {nni} (icv (n1 , int32) (icv (n2 , int32) lv)) {nno = proj₁ r} (icv (tpos (proj₂ (proj₂ r))) {{beq = proj₂ (proj₂ r)}} (icv (n2 , _) {{beq = g}} lv {{nelvec}}) {{{!!}}})
+                j = nmorph-r {nn = nni} eq1 eq2 {{elimNNotEqVec neq}}
+                g = nmorph-a {int32} j in
+            PrimASFun (icv (n1 , int32) (icv (n2 , int32) lv {{neqv}})) (icv (tpos (proj₁ (proj₂ (proj₂ r)))) {{beq = proj₁ (proj₂ (proj₂ r))}} (icv (n2 , _) {{beq = g}} lv {{neqv}})
+                      {{neicvec {{nnotEq-sym (slt⇒NNotEq (transitℕ (∈ₙ-len j) ((proj₂ (proj₂ (proj₂ r))))))}} {{nelvec}}}})
+
+
 
 
 mutual
 
-  restV-morph-abs : ∀ {l} {vc : Vec ASType l} {nni nno} n →
-                  Dec (n ∈ₙ nno) →
-                  View nni vc → Σ ℕ (λ l₁ → Σ (Vec ASType l₁) (View nno))
-  restV-morph-abs n (yes p) vw = suc rl , proj₂ n ∷ rvc , icv n {{beq = p}} rvw {{{!!}}} where
-    r = restV-morph vw
+
+  restV-morph'-abs : ∀ {l} {vc : Vec ASType l} {nni nno} n →
+                    Dec (n ∈ₙ nno) →
+                    (vwi : View nni vc) ⦃ neqv : NNotEqVec (proj₁ n) (vToVec vwi) ⦄ →
+                    Σ ℕ
+                    (λ l₁ →
+                       Σ (Vec ASType l₁)
+                       (λ vc₁ →
+                          Σ (View nno vc₁) (λ vw → (proj₁ n ∷ vToVec vwi) ⊃ vToVec vw)))
+  restV-morph'-abs {nno = nno} n (yes p) vwi ⦃ neqv ⦄ = suc rl , proj₂ n ∷ rvc , icv n {{beq = p}} rvw {{nnotEqVec-⊃ (proj₁ n) {{rsup}} {{neqv}}}} , n∷⊃ (proj₁ n) rsup where
+    r = restV-morph' {nno = nno} vwi
     rl = proj₁ r
     rvc = proj₁ (proj₂ r)
-    rvw = proj₂ (proj₂ r)
-  restV-morph-abs n (no ¬p) vw = restV-morph vw
-
-  restV-morph : ∀{li nni nno} {vci : Vec ASType li} (vwi : View nni vci) → Σ _ (λ l → Σ (Vec ASType l) (λ vc → View nno vc))
-  restV-morph {nno = nno} (icv n vwi) = restV-morph-abs n (n ∈ₙ? nno) vwi
-  restV-morph lv = zero , [] , lv
-
-
--- mutual 
-
-
---   data TFun : ℕ → Set where
---       icasf : ∀{n li lo} → {vci : Vec ASType li} → {vco : Vec ASType lo} → (tf : TFun n) → ASFunFT vci vco tf → TFun (suc n)
---       lf : TFun zero
+    rvw = proj₁ (proj₂ (proj₂ r))
+    rsup = proj₂ (proj₂ (proj₂ r))
+  restV-morph'-abs {nno = nno} n (no ¬p) vwi ⦃ neqv ⦄ = rl , rvc , rvw , ln∷⊃ (proj₁ n) rsup where
+    r = restV-morph' vwi
+    rl = proj₁ r
+    rvc = proj₁ (proj₂ r)
+    rvw = proj₁ (proj₂ (proj₂ r))
+    rsup = proj₂ (proj₂ (proj₂ r))
 
 
---   ASFunFT : ∀{n li lo} → (vci : Vec ASType li) → (vco : Vec ASType lo) → (tf : TFun n) → Set
---   ASFunFT {n} {li} {lo} vci vco tf = ∀{nni} → (vwi : View nni vci) → Σ TNames (λ nno → Σ (View nno vco) (λ vwo → ASFun vwi vwo tf))
+  restV-morph' : ∀{li nni nno} {vci : Vec ASType li} (vwi : View nni vci) → Σ _ (λ l → Σ (Vec ASType l) (λ vc → Σ (View nno vc) (λ vw → (vToVec vwi) ⊃ (vToVec vw))))
+  restV-morph' {nno = nno} (icv n vwi) = restV-morph'-abs n (n ∈ₙ? nno) vwi 
+  restV-morph' lv = zero , [] , lv , ec⊃
+
+restV-morph : ∀{li nni nno} {vci : Vec ASType li} (vwi : View nni vci) → Σ _ (λ l → Σ (Vec ASType l) (λ vc → View nno vc))
+restV-morph vwi = rl , rvc , rvw where
+  r = restV-morph' vwi
+  rl = proj₁ r
+  rvc = proj₁ (proj₂ r)
+  rvw = proj₁ (proj₂ (proj₂ r))
 
 
-
---   data _∈f_ {li lo} {vci : Vec ASType li} {vco : Vec ASType lo} : ∀{nf} → ℕ → TFun nf → Set where
---     instance
---       icb : ∀{n lli llo nf} → {lvci : Vec ASType lli} → {lvco : Vec ASType llo} → {tf : TFun nf} → {asf : ASFunFT lvci lvco tf} → _∈f_ {vci = vci} {vco = vco} n tf → (suc n) ∈f icasf tf asf 
---       ln : ∀{nf} → {tf : TFun nf} → {asf : ASFunFT vci vco tf} → zero ∈f icasf tf asf
+mutual 
 
 
-
---   outF : ∀{nni lli llo} {lvci : Vec ASType lli} (lvwi : View nni lvci) {lvco : Vec ASType llo} → ∀{nf} → {fnM : ℕ} → {tf : TFun nf} → (feq : _∈f_ {vci = lvci} {vco = lvco} fnM tf) → Σ TNames (λ nno → View nno lvco)
---   outF lvwi {nf = .(suc _)} {.(suc _)} (icb inf) = outF lvwi inf
---   outF lvwi {nf = .(suc _)} {.0} (ln {asf = asf}) = proj₁ (asf lvwi) , proj₁ (proj₂ (asf lvwi)) 
-
+  data TFun : ℕ → Set where
+      icasf : ∀{n li lo} → {vci : Vec ASType li} → {vco : Vec ASType lo} → (tf : TFun n) → ASFunFT vci vco tf → TFun (suc n)
+      lf : TFun zero
 
 
---   data ASFun {li lo nni nf} {vci : Vec ASType li} (vwi : View nni vci) {vco : Vec ASType lo} {nno} (vwo : View nno vco) (tf : TFun nf) : Set where
---     call : ∀{lli llo}
---            → {lvci : Vec ASType (suc lli)} → {lvco : Vec ASType llo}
---            → (lvwi : Vec ℕ (suc lli)) → {{neq : NNotEqVVec lvwi}}
---            → {{seq : vwi ⊃ₑᵢ lvwi wt lvci}}
---            → (fn : ℕ) → {{feq : _∈f_ {vci = lvci} {vco = lvco} (nf ∸ fn) tf}} → let outf = outF (supToView seq) feq in ASFun {nni = proj₁ outf} (proj₂ (proj₂ ((proj₂ outf) prepend (proj₂ (proj₂ (restV-morph vwi)))))) vwo tf → ASFun vwi vwo tf
---     primF : PrimASFun vwi vwo → ASFun vwi vwo tf
---     idF  : ASFun vwi vwo tf
+  ASFunFT : ∀{n li lo} → (vci : Vec ASType li) → (vco : Vec ASType lo) → (tf : TFun n) → Set
+  ASFunFT {n} {li} {lo} vci vco tf = ∀{nni} → (vwi : View nni vci) → Σ TNames (λ nno → Σ (View nno vco) (λ vwo → ASFun vwi vwo tf))
 
 
 
+  data _∈f_ {li lo} {vci : Vec ASType li} {vco : Vec ASType lo} : ∀{nf} → ℕ → TFun nf → Set where
+    instance
+      icb : ∀{n lli llo nf} → {lvci : Vec ASType lli} → {lvco : Vec ASType llo} → {tf : TFun nf} → {asf : ASFunFT lvci lvco tf} → _∈f_ {vci = vci} {vco = vco} n tf → (suc n) ∈f icasf tf asf 
+      ln : ∀{nf} → {tf : TFun nf} → {asf : ASFunFT vci vco tf} → zero ∈f icasf tf asf
 
 
 
--- addF : ∀{li lo nf} {vci : Vec ASType li} {vco : Vec ASType lo} (tf : TFun nf) (asf : ASFunFT vci vco tf) → ℕ × TFun (suc nf)
--- addF {nf = nf} tf as = nf , icasf tf as
+  outF : ∀{nni lli llo} {lvci : Vec ASType lli} (lvwi : View nni lvci) {lvco : Vec ASType llo} → ∀{nf} → {fnM : ℕ} → {tf : TFun nf} → (feq : _∈f_ {vci = lvci} {vco = lvco} fnM tf) → Σ TNames (λ nno → View nno lvco)
+  outF lvwi {nf = .(suc _)} {.(suc _)} (icb inf) = outF lvwi inf
+  outF lvwi {nf = .(suc _)} {.0} (ln {asf = asf}) = proj₁ (asf lvwi) , proj₁ (proj₂ (asf lvwi)) 
+
+
+
+  data ASFun {li lo nni nf} {vci : Vec ASType li} (vwi : View nni vci) {vco : Vec ASType lo} {nno} (vwo : View nno vco) (tf : TFun nf) : Set where
+    call : ∀{lli llo}
+           → {lvci : Vec ASType (suc lli)} → {lvco : Vec ASType llo}
+           → (lvwi : Vec ℕ (suc lli)) → {{neq : NNotEqVVec lvwi}}
+           → {{seq : vwi ⊃ₑᵢ lvwi wt lvci}}
+           → (fn : ℕ) → {{feq : _∈f_ {vci = lvci} {vco = lvco} (nf ∸ fn) tf}} → let outf = outF (supToView seq) feq in ASFun {nni = proj₁ outf} (proj₂ (proj₂ ((proj₂ outf) prepend (proj₂ (proj₂ (restV-morph vwi)))))) vwo tf → ASFun vwi vwo tf
+    primF : PrimASFun vwi vwo → ASFun vwi vwo tf
+    idF  : ASFun vwi vwo tf
+
+
+
+
+
+
+addF : ∀{li lo nf} {vci : Vec ASType li} {vco : Vec ASType lo} (tf : TFun nf) (asf : ASFunFT vci vco tf) → ℕ × TFun (suc nf)
+addF {nf = nf} tf as = nf , icasf tf as
 
 
 
