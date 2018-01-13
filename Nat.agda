@@ -33,7 +33,10 @@ data _≤_ : Rel ℕ Level.zero where
 ≤-pred : ∀ {m n} → suc m ≤ suc n → m ≤ n
 ≤-pred s≤s = it
 
-
+instance
+  ≤-sym : ∀ {m} → m ≤ m
+  ≤-sym {zero} = z≤n
+  ≤-sym {suc m} = s≤s {{≤-sym}}
 
 transitℕ : ∀{a b c} → a ≤ b → b ≤ c → a ≤ c
 transitℕ z≤n lt2 = z≤n

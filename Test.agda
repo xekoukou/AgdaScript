@@ -21,9 +21,8 @@ addNN : (ast : ASType) → TNames → TNames
 addNN ast nn = proj₁ (addN nn ast)
 
 ←+ : ∀{n} → {tf : TFun n} → ASFunFT (int32 ∷ int32 ∷ []) (int32 ∷ int32 ∷ []) tf
-←+ {nni = nni} (icv (n1 , _) {{beq1}} (icv (n2 , _) lv))
+←+ {nni = nni} (icv (n1 , _) (lv (n2 , _)))
   = _ , _ ,  primF ←+ₚ
-
 
 
 
@@ -34,6 +33,6 @@ tf1 = addF lf ←+
 
 
 fun-fnno : ASFunFT (int32 ∷ int32 ∷ int32 ∷ []) (int32 ∷ []) (proj₂ tf1)
-fun-fnno (icv (a , _) (icv (b , _) (icv (c , _) lv {{q}}))) = ? where -- {!!} , ({!!} , call (a ∷ b ∷ []) {{neq = {!!}}} (proj₁ tf1) {!!}) where
+fun-fnno (icv (a , _) (icv (b , _) (lv (c , _)))) = {!!} where -- {!!} , ({!!} , call (a ∷ b ∷ []) {{neq = {!!}}} (proj₁ tf1) {!!}) where
   r : NNotEqVVec (a ∷ b ∷ c ∷ [])
-  r = it
+  r = neicvvec {{neq = {!!}}} {{ieq = neicvvec}}

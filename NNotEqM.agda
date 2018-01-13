@@ -51,9 +51,8 @@ nnotEq-sym gt = lt
 
 
 data NNotEqVec (n : ℕ) : ∀{l} → Vec ℕ l → Set where
-  instance
-    neicvec : ∀{l nc} → {vw : Vec ℕ l} → {{neq : NNotEq n nc}} → {{ieq : NNotEqVec n vw}} → NNotEqVec n (nc ∷ vw)
-    nelvec : NNotEqVec n []
+  neicvec : ∀{l nc} → {vw : Vec ℕ l} → {{neq : NNotEq n nc}} → {{ieq : NNotEqVec n vw}} → NNotEqVec n (nc ∷ vw)
+  nelvec : NNotEqVec n []
 
 
 elimNNotEqVec : ∀{n1 n2 l} → {vc : Vec ℕ l} → NNotEqVec n1 (n2 ∷ vc) → NNotEq n1 n2
@@ -77,28 +76,31 @@ data _∈_ {a} {A : Set a} : A → {n : ℕ} → Vec A n → Set a where
 
 
 
-data _⊃_ {A k} (vl : Vec A k) : ∀{l} → Vec A l → Set where
+data _⊃_ {A} : ∀ {k} → (vl : Vec A (suc k)) → ∀{l} → {{lt : l ≤ k}} → Vec A l → Set where
   instance
-    ic⊃ : ∀{a l} → {vr : Vec A l} → {{ieq : vl ⊃ vr}} → {{a∈vl : a ∈ vl}} → vl ⊃ (a ∷ vr)
-    ec⊃ : vl ⊃ []
+    ic⊃ : ∀{k} → {vl : Vec A (suc (suc k))} → ∀{a l} → {vr : Vec A l} → {{lt : l ≤ k}} → {{ieq : _⊃_ vl {{more≤Ok lt}} vr}} → {{a∈vl : a ∈ vl}} → vl ⊃ (a ∷ vr)
+    ec⊃ : ∀{k} → {vl : Vec A (suc k)} → vl ⊃ []
 
 
 
-ln∷⊃ : ∀{k l A} → ∀ n → {vl : Vec A k} → {vr : Vec A l} → vl ⊃ vr → (n ∷ vl) ⊃ vr
-ln∷⊃ n ic⊃ = ic⊃ {{ln∷⊃ n it}}
+ln∷⊃ : ∀{k l A} → ∀ n → {vl : Vec A (suc k)} → {{lt : l ≤ k}} → {vr : Vec A l} → vl ⊃ vr → _⊃_ (n ∷ vl) {{more≤Ok lt}} vr
+ln∷⊃ n ic⊃ = ic⊃ {{ieq = ln∷⊃ n it}}
 ln∷⊃ n ec⊃ = ec⊃
 
-n∷⊃ : ∀{k l A} → ∀ n → {vl : Vec A k} → {vr : Vec A l} → vl ⊃ vr → (n ∷ vl) ⊃ (n ∷ vr)
-n∷⊃ n sup = ic⊃ {{ln∷⊃ n sup}}
+n∷⊃ : ∀{k l A} → ∀ n → {vl : Vec A (suc k)} → {{lt : l ≤ k}} → {vr : Vec A l} → vl ⊃ vr → (n ∷ vl) ⊃ (n ∷ vr)
+n∷⊃ n sup = ic⊃ {{ieq = ln∷⊃ n sup}}
 
 
 nnotEq-∈ : ∀{k} → {vl : Vec ℕ k} → ∀ n a → a ∈ vl → NNotEqVec n vl → NNotEq n a
 nnotEq-∈ n a here neicvec = it
 nnotEq-∈ n a (there {{x}}) neicvec = nnotEq-∈ n a x it
 
+instance
+  nnotEqVec-⊃ : ∀{k l} → {vl : Vec ℕ (suc k)} → {{lt : l ≤ k}} → {vr : Vec ℕ l}
+                → ∀ n → {{sup : vl ⊃ vr}} → {{neq : NNotEqVec n vl}} → NNotEqVec n vr
+  nnotEqVec-⊃ n {{ic⊃ {{ieq = ieq}} {{x}}}} {{neq}} = neicvec {{nnotEq-∈ n _ x neq }} {{nnotEqVec-⊃ n {{ieq}} {{neq}}}} 
+  nnotEqVec-⊃ n {{ec⊃}} = nelvec
 
-nnotEqVec-⊃ : ∀{k l} → {vl : Vec ℕ k} → {vr : Vec ℕ l} → ∀ n → {{sup : vl ⊃ vr}} → {{neq : NNotEqVec n vl}} → NNotEqVec n vr
-nnotEqVec-⊃ n {{ic⊃ {{ieq}} {{x}}}} {{neq}} = neicvec {{nnotEq-∈ n _ x neq }} {{nnotEqVec-⊃ n {{ieq}} {{neq}}}} 
-nnotEqVec-⊃ n {{ec⊃}} = nelvec
 
-
+nnotEqVec-∈ : ∀{k b n} → {vl : Vec ℕ k}
+              → n ∈ vl → {{neq : NNotEqVVec (b ∷ vl)}} → NNotEqVec n vr
