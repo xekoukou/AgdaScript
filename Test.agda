@@ -33,6 +33,7 @@ tf1 = addF lf ←+
 
 
 fun-fnno : ASFunFT (int32 ∷ int32 ∷ int32 ∷ []) (int32 ∷ []) (proj₂ tf1)
-fun-fnno (icv (a , _) (icv (b , _) (lv (c , _)))) = {!!} where -- {!!} , ({!!} , call (a ∷ b ∷ []) {{neq = {!!}}} (proj₁ tf1) {!!}) where
-  r : NNotEqVVec (a ∷ b ∷ c ∷ [])
-  r = neicvvec {{neq = {!!}}} {{ieq = neicvvec}}
+fun-fnno (icv (a , _) (icv (b , _) (lv (c , _)))) = {!!} , ({!!} , (call {lvci = int32 ∷ int32 ∷ []} {lvco = int32 ∷ int32 ∷ []} (a ∷ b ∷ []) {{{!!}}} {{{!!}}} {!!} {{{!!}}} {!!})) where -- {!!} , ({!!} , call (a ∷ b ∷ []) {{neq = {!!}}} (proj₁ tf1) {!!}) where
+  instance
+    r : NNotEqVVec (a ∷ b ∷ c ∷ [])
+    r = neicvvec {{it}} {{{!!}}}

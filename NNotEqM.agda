@@ -52,7 +52,8 @@ nnotEq-sym gt = lt
 
 data NNotEqVec (n : ℕ) : ∀{l} → Vec ℕ l → Set where
   neicvec : ∀{l nc} → {vw : Vec ℕ l} → {{neq : NNotEq n nc}} → {{ieq : NNotEqVec n vw}} → NNotEqVec n (nc ∷ vw)
-  nelvec : NNotEqVec n []
+  instance
+    nelvec : NNotEqVec n []
 
 
 elimNNotEqVec : ∀{n1 n2 l} → {vc : Vec ℕ l} → NNotEqVec n1 (n2 ∷ vc) → NNotEq n1 n2
@@ -76,18 +77,21 @@ data _∈_ {a} {A : Set a} : A → {n : ℕ} → Vec A n → Set a where
 
 
 
-data _⊃_ {A} : ∀ {k} → (vl : Vec A (suc k)) → ∀{l} → {{lt : l ≤ k}} → Vec A l → Set where
+
+
+
+data _⊃_ {A} : ∀ {k} → (vl : Vec A (suc k)) → ∀{l} → Vec A l → Set where
   instance
-    ic⊃ : ∀{k} → {vl : Vec A (suc (suc k))} → ∀{a l} → {vr : Vec A l} → {{lt : l ≤ k}} → {{ieq : _⊃_ vl {{more≤Ok lt}} vr}} → {{a∈vl : a ∈ vl}} → vl ⊃ (a ∷ vr)
+    ic⊃ : ∀{k} → {vl : Vec A (suc k)} → ∀{a l} → {vr : Vec A l} → {{ieq : _⊃_ vl vr}} → {{a∈vl : a ∈ vl}} → vl ⊃ (a ∷ vr)
     ec⊃ : ∀{k} → {vl : Vec A (suc k)} → vl ⊃ []
 
 
 
-ln∷⊃ : ∀{k l A} → ∀ n → {vl : Vec A (suc k)} → {{lt : l ≤ k}} → {vr : Vec A l} → vl ⊃ vr → _⊃_ (n ∷ vl) {{more≤Ok lt}} vr
+ln∷⊃ : ∀{k l A} → ∀ n → {vl : Vec A (suc k)} → {vr : Vec A l} → vl ⊃ vr → _⊃_ (n ∷ vl) vr
 ln∷⊃ n ic⊃ = ic⊃ {{ieq = ln∷⊃ n it}}
 ln∷⊃ n ec⊃ = ec⊃
 
-n∷⊃ : ∀{k l A} → ∀ n → {vl : Vec A (suc k)} → {{lt : l ≤ k}} → {vr : Vec A l} → vl ⊃ vr → (n ∷ vl) ⊃ (n ∷ vr)
+n∷⊃ : ∀{k l A} → ∀ n → {vl : Vec A (suc k)} → {vr : Vec A l} → vl ⊃ vr → (n ∷ vl) ⊃ (n ∷ vr)
 n∷⊃ n sup = ic⊃ {{ieq = ln∷⊃ n sup}}
 
 
@@ -95,12 +99,40 @@ nnotEq-∈ : ∀{k} → {vl : Vec ℕ k} → ∀ n a → a ∈ vl → NNotEqVec 
 nnotEq-∈ n a here neicvec = it
 nnotEq-∈ n a (there {{x}}) neicvec = nnotEq-∈ n a x it
 
+nnotEqVec-⊃ : ∀{k l} → {vl : Vec ℕ (suc k)} → {vr : Vec ℕ l}
+              → ∀ n → {{sup : vl ⊃ vr}} → {{neq : NNotEqVec n vl}} → NNotEqVec n vr
+nnotEqVec-⊃ n {{ic⊃ {{ieq = ieq}} {{x}}}} {{neq}} = neicvec {{nnotEq-∈ n _ x neq }} {{nnotEqVec-⊃ n {{ieq}} {{neq}}}} 
+nnotEqVec-⊃ n {{ec⊃}} = nelvec
+
+
+
+
+
+data _⊃i_ {A} : ∀ {k} → (vl : Vec A (suc k)) → ∀{l} → {{lt : l ≤ k}} → Vec A l → Set where
+  instance
+    ic⊃i : ∀{k} → {vl : Vec A (suc (suc k))} → ∀{a l} → {vr : Vec A l} → {{lt : l ≤ k}} → {{ieq : _⊃i_ vl {{more≤Ok lt}} vr}} → {{a∈vl : a ∈ vl}} → vl ⊃i (a ∷ vr)
+    ec⊃i : ∀{k} → {vl : Vec A (suc k)} → vl ⊃i []
+
+
+
+ln∷⊃i : ∀{k l A} → ∀ n → {vl : Vec A (suc k)} → {{lt : l ≤ k}} → {vr : Vec A l} → vl ⊃i vr → _⊃i_ (n ∷ vl) {{more≤Ok lt}} vr
+ln∷⊃i n ic⊃i = ic⊃i {{ieq = ln∷⊃i n it}}
+ln∷⊃i n ec⊃i = ec⊃i
+
+n∷⊃i : ∀{k l A} → ∀ n → {vl : Vec A (suc k)} → {{lt : l ≤ k}} → {vr : Vec A l} → vl ⊃i vr → (n ∷ vl) ⊃i (n ∷ vr)
+n∷⊃i n sup = ic⊃i {{ieq = ln∷⊃i n sup}}
+
+
+nnotEq-∈i : ∀{k} → {vl : Vec ℕ k} → ∀ n a → a ∈ vl → NNotEqVec n vl → NNotEq n a
+nnotEq-∈i n a here neicvec = it
+nnotEq-∈i n a (there {{x}}) neicvec = nnotEq-∈i n a x it
+
+
 instance
-  nnotEqVec-⊃ : ∀{k l} → {vl : Vec ℕ (suc k)} → {{lt : l ≤ k}} → {vr : Vec ℕ l}
-                → ∀ n → {{sup : vl ⊃ vr}} → {{neq : NNotEqVec n vl}} → NNotEqVec n vr
-  nnotEqVec-⊃ n {{ic⊃ {{ieq = ieq}} {{x}}}} {{neq}} = neicvec {{nnotEq-∈ n _ x neq }} {{nnotEqVec-⊃ n {{ieq}} {{neq}}}} 
-  nnotEqVec-⊃ n {{ec⊃}} = nelvec
+  nnotEqVec-⊃i : ∀{k l} → {vl : Vec ℕ (suc k)} → {{lt : l ≤ k}} → {vr : Vec ℕ l}
+                 → ∀ n → {{sup : vl ⊃i vr}} → {{neq : NNotEqVec n vl}} → NNotEqVec n vr
+  nnotEqVec-⊃i n {{ic⊃i {{ieq = ieq}} {{x}}}} {{neq}} = neicvec {{nnotEq-∈i n _ x neq }} {{nnotEqVec-⊃i n {{ieq}} {{neq}}}} 
+  nnotEqVec-⊃i n {{ec⊃i}} = nelvec
 
 
-nnotEqVec-∈ : ∀{k b n} → {vl : Vec ℕ k}
-              → n ∈ vl → {{neq : NNotEqVVec (b ∷ vl)}} → NNotEqVec n vr
+
