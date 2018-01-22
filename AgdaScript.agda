@@ -56,6 +56,10 @@ nn-len ln = zero
 Tℕ : Set
 Tℕ = ℕ × ASType
 
+
+
+
+
 sucT : Tℕ → Tℕ
 sucT (n , ast) = suc n , ast
 
@@ -67,6 +71,10 @@ noteq {suc n1} {.(suc n1)} {ast1} {ast2} (s≤s {{m≤n}}) refl = noteq {ast1 = 
 -- This is generalizable
 notsym :  ∀{n1 n2 : ℕ} → {ast1 ast2 : ASType} → ¬ ((n1 , ast1) ≡ (n2 , ast2)) → ¬ ((n2 , ast2) ≡ (n1 , ast1)) 
 notsym neq refl = neq refl
+
+
+
+
 
 data _∈ₙ_ : Tℕ → TNames → Set where
   instance
@@ -110,6 +118,10 @@ pos {n = n} x = proj₁ n
 belongs : ∀{n nn} → (nm : Name n {nn}) → n ∈ₙ nn
 belongs x = x
 
+
+
+
+
 remN : ∀{n} → (nn : TNames) → Name n {nn} → TNames
 remN {(zero , _)} (icn nn x₁ x₂) licb = icn nn x₁ false
 remN {(suc n , ast)} (icn nn x₁ x₂) icb = icn (remN {(n , ast)} nn it) x₁ x₂
@@ -119,6 +131,9 @@ addN : (pnn : TNames) → (ast : ASType) → Σ TNames (λ x → Σ _ (λ n → 
 addN (icn nn x x₁) ast = icn (proj₁ r) x x₁ , suc (proj₁ (proj₂ r)) , (icb {{proj₁ (proj₂ (proj₂ r))}}) , (s≤s {{proj₂ (proj₂ (proj₂ r))}}) where 
   r = addN nn ast
 addN ln ast = icn ln ast true , zero , (it , z≤n)
+
+
+
 
 
 
@@ -153,7 +168,7 @@ mutual
 
 
 
-
+-- These should have been put in NNotEqVec, not here.
 nnotEqVec?-abs : ∀ {l} {n₁ : Tℕ} {n} → 
                  Dec (NNotEq n (proj₁ n₁)) →
                  {vec : Vec ℕ l} →
