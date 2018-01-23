@@ -69,48 +69,49 @@ lnToVec$vwToLns≡vwToVecP {vw = vw} {P = P} = lnToVec$vwToLns≡vwToVecP-abs {w
 record LName : Set where
   field
     pos : ℕ
+    type : ASType
 
 open LName
 
 sucₗₙ : LName → LName
-sucₗₙ ln = record {pos = suc (pos ln)}
+sucₗₙ ln = record {pos = suc (pos ln) ; type = type ln}
 
-zeroₗₙ : LName
-zeroₗₙ = record {pos = zero}
+zeroₗₙ : ASType → LName
+zeroₗₙ type = record {pos = zero ; type = type}
 
 data _∈ₗₙ_ {tns} : LName → LNames tns → Set where
   instance
     there : ∀{ln tn lns} → {mbel : Maybe (tn ∈ₜₙ tns)} → {{bel : ln ∈ₗₙ lns}} → sucₗₙ ln ∈ₗₙ (moreLN tn mbel lns)
-    here  : ∀{tn lns} → {belₜₙ : tn ∈ₜₙ tns} → zeroₗₙ ∈ₗₙ (moreLN tn (just belₜₙ) lns)
+    here  : ∀{tn lns} → {belₜₙ : tn ∈ₜₙ tns} → (zeroₗₙ (type tn)) ∈ₗₙ (moreLN tn (just belₜₙ) lns)
 
-∈ₗₙTo∈ₜₙ : ∀{ln tns} → {lns : LNames tns} → ln ∈ₗₙ lns → ∃ (λ tn → tn ∈ₜₙ tns)
+∈ₗₙTo∈ₜₙ : ∀{ln tns} → {lns : LNames tns} → ln ∈ₗₙ lns → ∃ (λ n → record {pos = n ; type = type ln} ∈ₜₙ tns)
 ∈ₗₙTo∈ₜₙ (there {{bel}}) = ∈ₗₙTo∈ₜₙ bel
 ∈ₗₙTo∈ₜₙ (here {belₜₙ = bel}) = _ , bel
 
 
 
-∈ₗₙTo∈ : ∀{tns ln} → {lns : LNames tns} → (bel : ln ∈ₗₙ lns) → pos (proj₁ (∈ₗₙTo∈ₜₙ bel)) ∈ (proj₂ (lnToVec lns))
+∈ₗₙTo∈ : ∀{tns ln} → {lns : LNames tns} → (bel : ln ∈ₗₙ lns) → (proj₁ (∈ₗₙTo∈ₜₙ bel)) ∈ (proj₂ (lnToVec lns))
 ∈ₗₙTo∈ {lns = moreLN _ (just x) lns} (there ⦃ bel = bel ⦄) = there (∈ₗₙTo∈ bel)
 ∈ₗₙTo∈ {lns = moreLN _ nothing lns} (there ⦃ bel = bel ⦄) = ∈ₗₙTo∈ bel
 ∈ₗₙTo∈ here = here
 
 
 
-data LView {tns} (lns : LNames tns) : Set where
-  moreLVW : ∀ ln → {{bel : ln ∈ₗₙ lns}} → LView lns → LView lns
-  emptyLVW : LView lns
+data LView {tns} (lns : LNames tns) : ∀{l} → (vc : Vec ASType l) → Set where
+  moreLVW : ∀ ln → ∀{l} → {vc : Vec ASType l} → {{bel : ln ∈ₗₙ lns}} → LView lns vc → LView lns ((type ln) ∷ vc)
+  emptyLVW : LView lns []
 
-lvwToVec : {tns : TNames} → {lns : LNames tns} → LView lns → ∃ λ l → Vec ℕ l
-lvwToVec emptyLVW = zero , []
-lvwToVec (moreLVW ln lvw) = suc (proj₁ r) , pos ln ∷ proj₂ r where
+lvwToVec : {tns : TNames} → {lns : LNames tns} → ∀{l} → {vc : Vec ASType l} → LView lns vc → Vec ℕ l
+lvwToVec emptyLVW = []
+lvwToVec (moreLVW ln lvw) = pos ln ∷ r where
   r = lvwToVec lvw
 
 
-lvwToVW : {tns : TNames} → {lns : LNames tns} → LView lns → ∃ (λ l → Σ (Vec ASType l) (λ vc → View tns vc))
-lvwToVW (moreLVW ln {{lbel}} lvw) = (suc (proj₁ r)) , (_ , moreVW _ (proj₂ (belₜₙ)) (proj₂ (proj₂ r))) where
+lvwToVW : {tns : TNames} → {lns : LNames tns} → ∀{l} → {vc : Vec ASType l} → LView lns vc → View tns vc
+lvwToVW (moreLVW ln {{lbel}} lvw) = moreVW _ (proj₂ (belₜₙ)) r where
   r = lvwToVW lvw
   belₜₙ = ∈ₗₙTo∈ₜₙ lbel
-lvwToVW emptyLVW = zero , [] , emptyVW
+lvwToVW emptyLVW = emptyVW
 
 
 
@@ -118,27 +119,27 @@ lneqToNeq-lemma2 : ∀ {tnsi} {lnsi : LNames tnsi} {ln2 ln} →
                    NotEq (pos ln) (pos ln2) →
                    NotEqVVec (proj₂ (lnToVec lnsi)) →
                    (bel : ln ∈ₗₙ lnsi) (bel2 : ln2 ∈ₗₙ lnsi) →
-                   NotEq (pos (proj₁ (∈ₗₙTo∈ₜₙ bel))) (pos (proj₁ (∈ₗₙTo∈ₜₙ bel2)))
+                   NotEq (proj₁ (∈ₗₙTo∈ₜₙ bel)) (proj₁ (∈ₗₙTo∈ₜₙ bel2))
 lneqToNeq-lemma2 {lnsi = moreLN _ (just x) lnsi} (predEq ⦃ neq ⦄) (vvi {{ieq = noteqi}}) (there ⦃ bel = bel ⦄) (there ⦃ bel = bel2 ⦄) = lneqToNeq-lemma2 neq noteqi bel bel2
 lneqToNeq-lemma2 {lnsi = moreLN _ nothing lnsi} (predEq ⦃ neq ⦄) noteqi (there ⦃ bel = bel ⦄) (there ⦃ bel = bel2 ⦄) = lneqToNeq-lemma2 neq noteqi bel bel2
-lneqToNeq-lemma2 neq (vvi {{noteq}}) (there {tn = tn} ⦃ bel = bel ⦄) here = notEq-sym (notEq-∈ (pos tn) (pos (proj₁ (∈ₗₙTo∈ₜₙ bel))) (∈ₗₙTo∈ bel) noteq)
-lneqToNeq-lemma2 neq (vvi {{noteq}}) here (there {tn = tn} ⦃ bel = bel ⦄) = notEq-∈ (pos tn) (pos (proj₁ (∈ₗₙTo∈ₜₙ bel))) (∈ₗₙTo∈ bel) noteq
+lneqToNeq-lemma2 neq (vvi {{noteq}}) (there {tn = tn} ⦃ bel = bel ⦄) here = notEq-sym (notEq-∈ (pos tn) (proj₁ (∈ₗₙTo∈ₜₙ bel)) (∈ₗₙTo∈ bel) noteq)
+lneqToNeq-lemma2 neq (vvi {{noteq}}) here (there {tn = tn} ⦃ bel = bel ⦄) = notEq-∈ (pos tn) (proj₁ (∈ₗₙTo∈ₜₙ bel)) (∈ₗₙTo∈ bel) noteq
 
 
-lneqToNeq-lemma : ∀ {tnsi} {lnsi : LNames tnsi} {lvw : LView lnsi}
+lneqToNeq-lemma : ∀ {tnsi} {lnsi : LNames tnsi} {l} {vc : Vec ASType l} {lvw : LView lnsi vc}
                     {ln} →
-                  NotEqNVec (pos ln) (proj₂ (lvwToVec lvw)) →
+                  NotEqNVec (pos ln) (lvwToVec lvw) →
                   NotEqVVec (proj₂ (lnToVec lnsi)) →
                   {bel : ln ∈ₗₙ lnsi} →
-                  NotEqNVec (pos (proj₁ (∈ₗₙTo∈ₜₙ bel)))
-                  (vwToVec (proj₂ (proj₂ (lvwToVW lvw))))
+                  NotEqNVec (proj₁ (∈ₗₙTo∈ₜₙ bel))
+                  (vwToVec (lvwToVW lvw))
 lneqToNeq-lemma {lvw = moreLVW ln2 {{bel2}} lvw} {ln} (nvi {{neq}} {{ieq}}) noteqi {bel} = nvi {{lneqToNeq-lemma2 neq noteqi bel bel2}} {{lneqToNeq-lemma {lvw = lvw} ieq noteqi {bel = bel}}}
 lneqToNeq-lemma {lvw = emptyLVW} neq noteqi {bel} = nvl
 
 -- Local Not Equality to Global Not Equality.
 lneqToNeq : ∀{tnsi} (lnsi : LNames tnsi) (noteqi : NotEqVVec (proj₂ (lnToVec lnsi)))
-      (lvw : LView lnsi) (noteqLVW : NotEqVVec (proj₂ (lvwToVec lvw)))
-      → let vw = proj₂ (proj₂ (lvwToVW lvw)) in NotEqVVec (vwToVec vw)
+      {l} {vc : Vec ASType l} (lvw : LView lnsi vc) (noteqLVW : NotEqVVec (lvwToVec lvw))
+      → let vw = lvwToVW lvw in NotEqVVec (vwToVec vw)
 lneqToNeq lnsi noteqi (moreLVW ln {{bel}} lvw) (vvi {{neq}} {{ieq}}) = vvi {{lneqToNeq-lemma {lvw = lvw} neq noteqi {bel} }} {{r}} where
   r = lneqToNeq lnsi noteqi lvw ieq
 lneqToNeq lnsi noteqi emptyLVW noteqLVW = noteqLVW

@@ -29,15 +29,11 @@ open RawMonad (Data.Maybe.monad {Level.zero})
 
 
 
-record FName : Set where
-  field
-    pos : ℕ
-
 mutual
 
 
   data TFun : (len : ℕ) → Set where
-    nextTF : ∀{len li lo loi} → {vci : Vec ASType li} → {vco : Vec ASType lo} → {vcoi : Vec ASType loi} → (tf : TFun len) → ASFunFT vci vco tf → TFun (suc len)
+    nextTF : ∀{len li lo} → {vci : Vec ASType li} → {vco : Vec ASType lo} → (tf : TFun len) → ASFunFT vci vco tf → TFun (suc len)
 -- ? is this needed?  nextFunDef : ∀{n li lo} → {vci : Vec ASType (suc li)} → {vco : Vec ASType lo} → (tf : TFun n) → ? → TFun (suc n) -- Maybe here we need to have a (function) projection to the first two parts of the Sigma from ASFunFT
     emptyTF : TFun 0
 
@@ -57,44 +53,36 @@ mutual
   ASFunFT : ∀{len li lo} → (vci : Vec ASType li) → (vco : Vec ASType lo) → (tf : TFun len) → Set
   ASFunFT {len} {li} {lo} vci vco tf = ∀{nni} → (vwi : View nni vci) → {noteqi : NotEqVVec (vwToVec vwi)} → ASFunF vci vco tf vwi {noteqi}
 
+  record FName {li lo} (vci : Vec ASType li) (vco : Vec ASType lo) : Set where
+    field
+      pos : ℕ
 
-  fnToASFun : ∀{len} → (w : ℕ) → (tf : TFun len) → {{lt : suc w ≤ len}} → (∃ λ len → ∃ λ tf → ∃ λ li → ∃ λ lo → ∃ λ vci → ∃ λ vco → ASFunFT {len} {li} {lo} vci vco tf)
-  fnToASFun zero (nextTF tf x) ⦃ lth ⦄ = _ , _ , _ , _ , _ , _ , x
-  fnToASFun zero emptyTF ⦃ () ⦄
-  fnToASFun (suc w) (nextTF tf x) ⦃ s≤s ⦄ = fnToASFun w tf
-
-
-
--- Check that this is necessary and there isn't an easier solution.
-  applyArgs-abs : ∀ {tnsi len li lo ri} {vcri : Vec ASType ri}
-                  (vwri : View tnsi vcri) {noteqri : NotEqVVec (vwToVec vwri)}
-                  {vci : Vec ASType li} {vco : Vec ASType lo} {tf : TFun len} →
-                (∀ {nni} (vwi : View nni vci) {noteqi : NotEqVVec (vwToVec vwi)} →
-                 ASFunF vci vco tf vwi {noteqi}) →
-                Σ (ri ≡ li) (λ leq → subst (Vec ASType) leq vcri ≡ vci) →
-                ASFunF vcri vco tf vwri {noteqri}
-  applyArgs-abs vwri asft (refl , refl) = asft vwri
+-- ℕ here is the difference between pos fname and len as in LFun.
+  data _⊂f_ {li lo} {vci : Vec ASType li} {vco : Vec ASType lo} : ∀{len} → FName vci vco → (tf : TFun len) → Set where
+    instance
+      there : {nf : FName vci vco} → ∀{ilen ili ilo} → {ivci : Vec ASType ili} → {ivco : Vec ASType ilo} → {itf : TFun ilen} → {asft : ASFunFT ivci ivco itf} → {{is : nf ⊂f itf}} → (record {pos = suc (FName.pos nf)}) ⊂f (nextTF itf asft)
+      here : ∀{ilen} → {itf : TFun ilen} → {asft : ASFunFT vci vco itf} → (record {pos = zero}) ⊂f (nextTF itf asft)
 
 
-  applyArgs : ∀{tnsi len li lo ri} → {vcri : Vec ASType ri} → (vwri : View tnsi vcri) → {noteqri : NotEqVVec (vwToVec vwri)} → {vci : Vec ASType li}
-              → EqVec vcri vci → {vco : Vec ASType lo} → {tf : TFun len} → ASFunFT vci vco tf → ASFunF vcri vco tf vwri {noteqri}
-  applyArgs vwri eqvec asft = applyArgs-abs vwri asft (eqVecTo≡ eqvec)
+
+  fnToASFun : ∀{len li lo} → {vci : Vec ASType li} → {vco : Vec ASType lo} → (cfn : FName vci vco) → (tf : TFun len) → {{sub : cfn ⊂f tf}} → (∃ λ len → ∃ λ tf → ASFunFT {len} {li} {lo} vci vco tf)
+  fnToASFun _ (nextTF tf _) ⦃ there {nf}⦄ = fnToASFun nf tf
+  fnToASFun _ (nextTF _ asft) ⦃ here ⦄ = _ , _ , asft
 
 
 
 
   data LFun {len tnsi} (lnsi : LNames tnsi) {noteqi : NotEqVVec (proj₂ (lnToVec lnsi))} {tnso} (lnso : LNames tnso) {noteqo : NotEqVVec (proj₂ (lnToVec lnso))} (tf : TFun len) : Set where 
-    call : (lvw : LView lnsi) → {{noteqLVW : NotEqVVec (proj₂ (lvwToVec lvw))}} 
-           → (fn : FName) → {{flth : suc (len ∸ FName.pos fn) ≤ len}} → 
-           let toVW = lvwToVW lvw
-               vc = proj₁ (proj₂ toVW)
-               vw = proj₂ (proj₂ toVW)
+    call : ∀{li} → {vci : Vec ASType li} → (lvw : LView lnsi vci) → {{noteqLVW : NotEqVVec (lvwToVec lvw)}} 
+           → ∀{lo} → {vco : Vec ASType lo} → (fn : FName vci vco) →
+           let cfname : FName vci vco
+               cfname = record { pos = len ∸ (FName.pos fn)}
+           in {{ fnExists : cfname ⊂f tf}} → 
+           let vwi = lvwToVW lvw
                gneq = lneqToNeq lnsi noteqi lvw noteqLVW
-               toASF = fnToASFun (len ∸ FName.pos fn) tf
-               asft = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ toASF)))))
-               vci = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ toASF))))
-           in {{iteq : EqVec vc vci}} →
-           let asf = applyArgs vw {gneq} iteq asft
+               toASF = fnToASFun {vci = vci} {vco = vco} cfname tf
+               asft = {!!} -- proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ toASF)))))
+               asf = {!!}
            in LFun  {!!} {{!!}} lnso {noteqo} tf → LFun _ _ _
     id : LFun _ _ _
 
@@ -109,13 +97,13 @@ mutual
 
     asfCon : {lnsol : LNames tnso} → {noteqol : NotEqVVec (proj₂ (lnToVec lnsol))}
              → (lfun : LFun (vwToLns vwi) {lnToVec$vwToLns≡vwToVecP {vw = vwi} {P = NotEqVVec} noteqi} lnsol {noteqol} tf)
-             → (lvwoRem : LView (lnsCutToLenRem lnsol (vw-len vwi)))
-             → {{vwoEq : (lo , vco , vwo) ≡ lvwToVW lvwoRem}} -- Theoretically this should be proved by instance resolution.
+             → (lvwoRem : LView (lnsCutToLenRem lnsol (vw-len vwi)) vco)
+             → {{vwoEq : vwo ≡ lvwToVW lvwoRem}} -- Theoretically this should be proved by instance resolution.
                                                               -- Let's see if it does.
              → ASFun _ _ _ {{!!}} {{!!}} {lnsCutToLen lnsol (vw-len vwi)}
 
 
 
-bol : ∀{tnsi len li lo} → {lnsi : LNames tnsi} → (lvw : LView lnsi) → (vci : Vec ASType li) → (vco : Vec ASType lo) → {tf : TFun len} → (vwi : View tnsi vci) → {noteqi : NotEqVVec (vwToVec vwi)}
-      → (asf : ASFunF vci vco tf vwi {noteqi}) → {!!}
-bol = {!!}
+-- bol : ∀{tnsi len li lo} → {lnsi : LNames tnsi} → (vci : Vec ASType li) → (lvw : LView lnsi vci) → (vco : Vec ASType lo) → {tf : TFun len} → (vwi : View tnsi vci) → {noteqi : NotEqVVec (vwToVec vwi)}
+--       → (asf : ASFunF vci vco tf vwi {noteqi}) → {!!}
+-- bol = {!!}
