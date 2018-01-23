@@ -20,9 +20,9 @@ data TNames : Set where
   emptyTN : TNames
 
 
-tn-length : TNames → ℕ
-tn-length (moreTN type exists x) = suc (tn-length x)
-tn-length emptyTN = 0
+tns-length : TNames → ℕ
+tns-length (moreTN type exists x) = suc (tns-length x)
+tns-length emptyTN = 0
 
 
 
@@ -48,6 +48,11 @@ data _∈ₜₙ_ : TName → TNames → Set where
 
 
 
+∈ₙ-length : ∀{tn tns} → (bel : tn ∈ₜₙ tns) → pos (sucₜₙ tn) ≤ tns-length tns
+∈ₙ-length (there bel) = s≤s {{∈ₙ-length bel}}
+∈ₙ-length here = s≤s
+
+
 --------------------------------
 -- Operations on TNames.
 
@@ -70,7 +75,7 @@ record AddTN  (ptns : TNames) (type : ASType) : Set where
     tns : TNames
     pos : ℕ
     bel : record {pos = pos ; type = type} ∈ₜₙ tns
-    rel : tn-length ptns ≤ pos
+    rel : tns-length ptns ≤ pos
 
 open AddTN
 
@@ -109,3 +114,15 @@ data View (tns : TNames) : ∀{l} → Vec ASType l → Set where
 vwToVec : {tns : TNames} → ∀{l} → {vc : Vec ASType l} → View tns vc → Vec ℕ l
 vwToVec (moreVW tn bel vw) = pos tn ∷ vwToVec vw
 vwToVec emptyVW = []
+
+
+vw-len : {tns : TNames} → ∀{l} → {vc : Vec ASType l} → (vw : View tns vc) → ℕ
+vw-len (moreVW tn bel₁ vw) = suc (vw-len vw)
+vw-len emptyVW = zero
+
+
+-- vec is the output of vwToVec from the original View itns vci.
+data TNOp (tnsi : TNames) {l} (vec : Vec ℕ l) (tnso : TNames) : Set where
+  addTNOp : {type : ASType} → TNOp (tns (addTN tnsi type)) vec tnso → TNOp _ _ _
+  remTNOp : ∀{tn} → {bel : tn ∈ₜₙ tnsi} → TNOp (remTN tnsi bel) vec tnso → TNOp _ _ _
+  idOp : TNOp _ _ _ 

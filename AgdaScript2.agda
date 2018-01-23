@@ -49,7 +49,9 @@ mutual
       vwo : View tnso vco
       lnso : LNames tnso
       noteqo : NotEqVVec (vwToVec vwo)
-      asf : ASFun vwi {noteqi} vwo {noteqo} tf  {lnso}
+      gtv : GT (tns-length tnsi) (vwToVec vwo)
+      tnop : TNOp tnsi (vwToVec vwi) tnso
+      asf : ASFun vwi {noteqi} vwo {noteqo} tf {gtv} {tnop} {lnso}
 
 
   ASFunFT : ∀{len li lo} → (vci : Vec ASType li) → (vco : Vec ASType lo) → (tf : TFun len) → Set
@@ -93,12 +95,27 @@ mutual
                vci = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ toASF))))
            in {{iteq : EqVec vc vci}} →
            let asf = applyArgs vw {gneq} iteq asft
-           in {!asf!}
+           in LFun  {!!} {{!!}} lnso {noteqo} tf → LFun _ _ _
+    id : LFun _ _ _
 
 
 
-  -- lnso here is the remaining input that can be reused in the ordered that it was received so as to be able to update the local names of the calling function
+  -- lnso here is the remaining input that can be reused in the order that it was received so as to be able to update the local names of the calling function
   -- by using it.
   data ASFun {li lo tnsi nf} {vci : Vec ASType li} (vwi : View tnsi vci) {noteqi : NotEqVVec (vwToVec vwi)}
-             {vco : Vec ASType lo} {tnso} (vwo : View tnso vco) {noteqo : NotEqVVec (vwToVec vwo)} (tf : TFun nf) : {lnso : LNames tnso} → Set where
-    asfCon : (lfun : LFun (vwToLns vwi) {lnToVec$vwToLns≡vwToVecP {vw = vwi} {P = NotEqVVec} noteqi} (vwToLns vwo) {lnToVec$vwToLns≡vwToVecP {vw = vwo} {P = NotEqVVec} noteqo} tf) → ASFun _ _ _ {{!!}}
+             {vco : Vec ASType lo} {tnso} (vwo : View tnso vco) {noteqo : NotEqVVec (vwToVec vwo)} (tf : TFun nf)
+             {gtv : GT (tns-length tnsi) (vwToVec vwo)}
+             {tnop : TNOp tnsi (vwToVec vwi) tnso} : {lnso : LNames tnso} → Set where
+
+    asfCon : {lnsol : LNames tnso} → {noteqol : NotEqVVec (proj₂ (lnToVec lnsol))}
+             → (lfun : LFun (vwToLns vwi) {lnToVec$vwToLns≡vwToVecP {vw = vwi} {P = NotEqVVec} noteqi} lnsol {noteqol} tf)
+             → (lvwoRem : LView (lnsCutToLenRem lnsol (vw-len vwi)))
+             → {{vwoEq : (lo , vco , vwo) ≡ lvwToVW lvwoRem}} -- Theoretically this should be proved by instance resolution.
+                                                              -- Let's see if it does.
+             → ASFun _ _ _ {{!!}} {{!!}} {lnsCutToLen lnsol (vw-len vwi)}
+
+
+
+bol : ∀{tnsi len li lo} → {lnsi : LNames tnsi} → (lvw : LView lnsi) → (vci : Vec ASType li) → (vco : Vec ASType lo) → {tf : TFun len} → (vwi : View tnsi vci) → {noteqi : NotEqVVec (vwToVec vwi)}
+      → (asf : ASFunF vci vco tf vwi {noteqi}) → {!!}
+bol = {!!}

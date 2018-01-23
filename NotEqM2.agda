@@ -68,3 +68,8 @@ notEqNVec-⊃ n (⊃i a∈vl sup) neq = nvi {{notEq-∈ n _ a∈vl neq}} {{notEq
 notEqNVec-⊃ n ⊃l neq = nvl
 
 
+
+
+data GT (min : ℕ) : ∀{l} → Vec ℕ l → Set where
+  moreGT : ∀{l x} →  {xs : Vec ℕ l} → (gt : suc min ≤ x) → (is : GT min xs) → GT _ (x ∷ xs)
+  emtyGT : GT _ []

@@ -143,3 +143,17 @@ lneqToNeq lnsi noteqi (moreLVW ln {{bel}} lvw) (vvi {{neq}} {{ieq}}) = vvi {{lne
   r = lneqToNeq lnsi noteqi lvw ieq
 lneqToNeq lnsi noteqi emptyLVW noteqLVW = noteqLVW
 
+
+-- Maximum size of the new LNames is len.
+lnsCutToLen : ∀{tns} → (lns : LNames tns) → (len : ℕ) → LNames tns
+lnsCutToLen lns zero = emptyLN
+lnsCutToLen (moreLN tn mbel lns) (suc len) = moreLN tn mbel (lnsCutToLen lns len)
+lnsCutToLen emptyLN (suc len) = emptyLN
+
+
+-- We keep the length the same so as to preserve the lns but we flush the first part so that
+-- no view can be created from the original arguments.
+lnsCutToLenRem : ∀{tns} → (lns : LNames tns) → (len : ℕ) → LNames tns
+lnsCutToLenRem lns zero = lns
+lnsCutToLenRem (moreLN tn mbel lns) (suc len) = moreLN tn nothing (lnsCutToLenRem lns len)
+lnsCutToLenRem emptyLN (suc len) = emptyLN
